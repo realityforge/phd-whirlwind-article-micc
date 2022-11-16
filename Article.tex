@@ -264,7 +264,7 @@ Whirlwind v3.0 addressed this problem by adding a local FIFO queue to \emph{sequ
 
 During the preceding fire season, a crash occurred as a result of accidental state sharing between elements. To address these concerns two changes were made to Whirlwind; the Erlang model of fault propagation and recovery was incorporated, and the byte code validator was enhanced to enforce isolation properties. The other major change was one of terminology; elements became processes, events became messages and stages became groups.
 
-To enforce isolation properties of the messages, the byte code validator required that developer annotate the messages. The validator used the annotations combined with rules and heuristics to enforce the isolation constraints. The messages and all transitively referenced values needed to be either; immutable, a process or have ownership transferred from the source to destination processes. The byte code validator in many ways resembled a less capable, more ad--hoc version of the Kilim byte code weaver~\cite{Srinivasan:08:Kilim} that just performed validation.
+To enforce isolation properties of the messages, the byte code validator required that the developer annotate the messages. The validator used the annotations combined with rules and heuristics to enforce the isolation constraints. The messages and all transitively referenced values needed to be either; immutable, a process or have ownership transferred from the source to destination processes. The byte code validator in many ways resembled a less capable, more ad--hoc version of the Kilim byte code weaver~\cite{Srinivasan:08:Kilim} that just performed validation.
 
 \subsection{Whirlwind v5.0}
 
