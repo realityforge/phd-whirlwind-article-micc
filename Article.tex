@@ -109,6 +109,8 @@ A principal is shared between one or more processes. The principal is the entity
 
 %The resource management policies are typically driven by feedback loops that monitor resource availability and system performance and adjust tuning parameters to meet performance goals
 
+The JVM is capable of supporting an order of magnitude more processes than threads. With appropriate operating system configuration it is not unreasonable for a low end server to support 10s of 1000s of concurrent connections.
+
 \subsection{Processes}
 \label{section:Processes}
 
@@ -267,19 +269,32 @@ Kilim and Erlang are independent threads of execution and can store state on the
 
 \section{Future Work}
 
-There are two major changes planned for the next version of Whirlwind. The first change is to support Kilim or Kilim--like processes executing on top of the Whirlwind runtime. The second is to investigate the possibility of dynamically organizing processes into groups at runtime.
+There are two major changes planned for the next version of Whirlwind. The first change is to support Kilim~\cite{Srinivasan:08:Kilim} or Kilim--like processes executing on top of the Whirlwind runtime. The second is to investigate the possibility of dynamically organizing processes into groups at runtime.
 
-Kilim has two main advantages over the current Whirlwind process implementation. Firstly, Kilim enforces the isolation constrains through a byte code validator. Earlier versions of Whirlwind attempted this with limited success. Secondly, Kilim processes are lightweight threads that can store continuation data between handling messages. It is expected that most Whirlwind applications developed with the Kilim--style processes will only have a small number of active frames when they are paused thus minimizing the overheads associated with a Kilim--style processes.
+\subsection{Kilim integration}
 
-Simple heuristics combined with developer annotations and runtime instrumentation should make it possible to automate the organization of processes into groups. If a large number of processes of a single type are instantiated it is likely that they would have a high degree of code locality and thus make an ideal group. Annotations could be used to guide the heuristics for process grouping. Where automation is not possible the framework can fall back to manual configuration.
+Kilim has two main advantages over the current Whirlwind process implementation. Firstly, Kilim enforces the isolation constrains through a byte code validator. Earlier versions of Whirlwind attempted this with limited success. 
+
+Secondly, Kilim processes are lightweight threads that use automatic stack management~\cite{Adya02Cooperative} to maintain continuation data between handling messages. 
+Whirlwind processes currently use complex state machines and manual stack management to achieve the same effect. Kilim attempts to optimize saving and restoring stack state when a process is paused or resumed. The degree of overhead is related to the number of frames on the stack when the process is paused or resumed. Experience with existing Whirlwind applications suggest that a paused process will only have a small number of active frames. The expectation is that the small performance degradation is acceptable tradeoff for certain classes of process.
+
+\subsection{Automatic grouping}
+
+Simple heuristics combined with annotations and runtime instrumentation can automate the organization of processes into groups. Using automated grouping of processes will reduce the level of complexity for developing Whirlwind based applications. As groups are likely to be created on demand, processes will need to support migration from one group to another.
+
+A typical heuristic would be to create a group when a large number of processes of a single type are instantiated. The processes are likely to have a high degree of code locality and with large numbers the system could take advantage of cohort scheduling making these processes an ideal group.
+
+Annotations could be added to the processes to provide hints to the runtime system to guide grouping. The annotations would indicate the resource and concurrency requirements of the processes. Where annotations were not sufficient for the runtime to group processes appropriately, the developer could fall back on manual group configuration.
+
+Automatic grouping would likely lead to the decoupling of the message predicate from the group. The message predicate is something that the developer will likely want to attach to specific sets of processes or even message flows between specific sets of processes.
 
 \section{Conclusions}
 
-%Whirlwind: Overload protection, fault--tolerance and self--tuning in an Internet services platform
-%Whirlwind demonstrates that it is possible to build Internet services with overload
-%Whirlwind provides a field tested solut for building Internet services overload
-% Relate it to Emergency services
+Whirlwind demonstrates an architecture for building high--concurrency Internet services with overload protection and fault tolerance. Whirlwind is a synthesis of existing techniques put to the test in production environments for 5 years, in a context where there is a high cost for failure or poor performance. Whirlwind managed to withstand extreme loads as a result of Victoria's worst fire season in 2009.
 
+The programming model introduces the principal abstraction. This centralizes the categorization and prioritization of requests and allows past work in scheduling and load shedding to be examined in a unified framework.
+
+Whirlwind also demonstrates an approach to incorporating existing load management techniques into a framework based on the actor model of concurrency. Flexible scheduling, cohort scheduling and message predicates proved to be useful additions.
 
 \bibliographystyle{IEEEtran}
 \bibliography{references}
