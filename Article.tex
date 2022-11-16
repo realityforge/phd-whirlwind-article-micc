@@ -1,5 +1,5 @@
 \def\mytitle{Whirlwind: Overload protection, fault--tolerance and self--tuning in an Internet services platform}
-\def\myauthor{Peter Donald and Somnath Ghosh}
+\def\myauthor{Peter Donald, Samar Singh and Somnath Ghosh}
 \def\mykeywords{concurrency}
 
 \documentclass[conference]{IEEEtran}
@@ -7,6 +7,7 @@
 \usepackage{cite}
 \usepackage[pdftex]{graphicx,hyperref}
 \usepackage{url}
+\usepackage{epstopdf}
 
 \pdfinfo{/Title (\mytitle) 
          /Author (\myauthor)
@@ -22,7 +23,7 @@
 \IEEEauthorblockA{School of Computer Science and Electronic Engineering\\
 La Trobe University,\\
 Melbourne, Australia\\
-Email: peter@realityforge.org and S.Ghosh@latrobe.edu.au}
+Email: peter@realityforge.org, S.Singh@latrobe.edu.au and S.Ghosh@latrobe.edu.au}
 }
 
 \maketitle
@@ -59,9 +60,9 @@ Past research has focused on parts of the problem but there has been no attempt 
 
 Previous work on load management has focused on using techniques such as admission control~\cite{Voigt:2001qe,Cherkasova:2002yb,srinivas00webk,Kanodia:2000qv,welsh03Adaptive,Elnikety:2004ty}, service degradation~\cite{welsh03Adaptive,abdelzaher99web} and scheduling policies~\cite{Zhou06RequestAware,Behren03Capriccio,Schroeder06Overload,Crovella99Alpha,Cherkasova1998Strategy,Larus:2002:Cohort} to limit response time spikes and maintain throughput during periods of overload. Admission control rejects a subset of requests so that the remaining requests meet response time goals. Service degradation aims to deliver less resource intensive content during periods of overload. The assumption is that it is better to deliver some content on time rather than fail to deliver the full content on time, or at all. Scheduling policies determine the order in which requests are accepted and after they have been accepted, the policy for sharing the available processor resources.
 
-Load shedding is typically achieved by selectively applying the above techniques to different requests. Requests can be categorized by low level connection properties~\cite{Voigt:2001qe}, protocol specific parameters (i.e. the url, headers or session associated with a HTTP request)~\cite{Cherkasova:2002yb,Voigt:2001qe} or application specific metrics (i.e. revenue and profits~\cite{Menasec:2000ty}, or \emph{Premium} vs \emph{Basic} users). Requests can also be categorized according to the expected change in resource availability after processing request~\cite{Behren03Capriccio} or predicted resource cost to process request~\cite{Crovella99Alpha}. Other systems categorize the request based on estimated utility\cite{Zhou06RequestAware} or ability to meet performance goals (i.e. the 90th--percentile of response time~\cite{welsh03Adaptive}). Categorization schemes can either be fine--grained or coarse--grained if requests are classified into a small number of classes. 
+Load shedding is typically achieved by selectively applying the above techniques to different requests. Requests can be categorized by low level connection properties~\cite{Voigt:2001qe}, protocol specific parameters (i.e. the url, headers or session associated with a HTTP request)~\cite{Cherkasova:2002yb,Voigt:2001qe} or application specific metrics (i.e. revenue and profits~\cite{Menasec:2000ty}, or \emph{Premium} vs \emph{Basic} users). Requests can also be categorized according to the expected change in resource availability after processing request~\cite{Behren03Capriccio} or predicted resource cost to process request~\cite{Crovella99Alpha}. Other systems categorize the request based on estimated utility\cite{Zhou06RequestAware} or ability to meet performance goals (i.e. the 90th--percentile of response time~\cite{welsh03Adaptive}). Class--based differentiation is a coarse--grain classification scheme but fine--grain classification schemes are common.
 
-Past research has tended to focus one categorization scheme rather than categorizing a request along multiple dimensions. It is probable that this is done as it makes the mapping between a categorization and a priority simple; \emph{Premium} users are always prioritized above \emph{Basic} users, \emph{Buy} requests are always prioritized above \emph{Browse} requests, while during overload light--weight requests are always prioritized above heavy--weight requests etc. 
+Past research has tended to focus one categorization axis rather than categorizing a request along multiple dimensions. It is probable that this is done as it makes the mapping between a categorization and a priority simple; \emph{Premium} users are always prioritized above \emph{Basic} users, \emph{Buy} requests are always prioritized above \emph{Browse} requests, while during overload light--weight requests are always prioritized above heavy--weight requests etc. 
 
 \subsection{Fault Tolerance}
 
@@ -71,17 +72,9 @@ A fault tolerant system is one ``\ldots able to recover from errors and to resto
 
 The Tandem NonStop system has a mean time between failures measured in years~\cite{Grey85Fail} and indirectly influenced many of the design decisions of Whirlwind. The architecture consists of hierarchically decomposing a system into processes where each process is a single unit of service and a single unit of failure. Processes share no state and only communicate via messages. A failure in a process does not propagate to other processes thus resulting in fault containment. The system was also designed using a fail--fast philosophy so that processes either function correctly or detect the fault, signal failure and stop operation.
 
-Fail--stop processors (FSPs) are described as suitable for programming a fault--tolerant system~\cite{Schneider:FailStopProcessors}. The properties considered necessary for a FSP include;
+The construction of fault--tolerant computing systems is simplified when programs do not need to cope with arbitrary behavior or corrupted state information. So not only should a failure be contained within a process, but on detection of a failure the process should halt rather than make erroneous state visible to other processors. Other processors should be able to detect if a process has failed so that they can attempt error recovery. Error recovery should have a known good state with which to restart the process. Similar properties are deemed necessary to construct fault--tolerant hardware systems~\cite{Schneider:FailStopProcessors}.  
 
-\begin{enumerate}
-	\item \emph{Halt on Failure}: If an failure is detected, the processor halts rather than than making erroneous state visible to other processors.
-	\item \emph{Failure Status Property}: A processor can detect if another processor has failed (and thus halted).
-	\item \emph{Stable Storage Property}: Storage is partitioned into volatile and stable storage. Stable storage is not lost after a failure and can be read by any other processor. Volatile storage are lost when the processor on failure.
-\end{enumerate}
-
-Fail--stop processors (FSPs) simplify the construction of fault--tolerant computing systems as programs do not need to cope with arbitrary behavior or corrupted state information. Software still need to be designed to minimize use of stable storage and allow resumption of a task solely by access to stable storage. 
-
-Erlang is a software architecture designed to survive software and hardware faults~\cite{Armstrong03Thesis} that was heavily influenced by FSPs and the Tandem NonStop system. Erlang models the world as isolated processes. When a process terminates either normally or due to failure, a message is sent to all monitoring processes. The monitoring processes can then take action to recover from the error if required.
+Erlang is a software architecture designed to survive software and hardware faults~\cite{Armstrong03Thesis} and incorporates these strategies. Erlang models the world as isolated processes. When a process terminates either normally or due to failure, a message is sent to all monitoring processes. The monitoring processes can then take action to recover from the error if required.
 
 An Erlang supervisor is a process that monitors child processes. If a child process fails, the supervisor uses a \emph{restart strategy} to restart the process and if unable to restart the process will terminate itself. Supervisors can monitor other supervisor processes and supervision is typically organized into a tree structure. The root supervisor must be reliable to ensure that the system can always resume normal operation. Erlang's supervisors were part of the architectural design that lead to 99.9999999\% (9 nines) reliability rating (or 31 ms. downtime a year!) of the AXD301 switch~\cite{armstrong:02:COP}.
 
@@ -91,21 +84,23 @@ Hyper--threading, multi--core and multi--cpu architectures are the direction of 
 
 It is argued that  the inherent non--determinism make any non--trivial multi--threaded, shared memory application ``incomprehensible to humans''~\cite{Lee06ThreadProblems}. Multi--threaded, shared memory architectures also face performance challenges. Maintaining throughput and fairness in the presence of locks can be difficult and is highly dependent on lock granularity and expected load patterns.
 
-The looming multi--core future and the success of Erlang~\cite{Armstrong96Concurrent} has recently placed the actor model in the spotlight. The actor model of concurrency offers an alternative to shared memory architectures. Actors are isolated and independent sequential entities that communicate by passing messages. Typical the number of actors present in a system is an order of magnitude greater than the number of threads supported.
+The looming multi--core future and the success of Erlang~\cite{armstrong96erlang} has recently placed the actor model in the spotlight. The actor model of concurrency offers an alternative to shared memory architectures. Actors are isolated and independent sequential entities that communicate by passing messages. Typical the number of actors present in a system is an order of magnitude greater than the number of threads supported.
 
-Erlang code is executed by a specialized runtime. However other actor implementations (i.e. SALSA~\cite{Varela:SALSA}, Scala's Actor library~\cite{Haller:07:ScalaActors}, Kilim~\cite{Srinivasan:08:Kilim}) target a general purpose virtual machine such as the Java Virtual Machine (JVM). These implementation use the type system or code modification techniques to verify that the actors conform to certain rules (i.e. no access to shared memory) and to integrate the actors with a runtime library. The runtime library provides the support to execute the actors using actor--per--thread model~\cite{Varela:SALSA}, actors as continuations executed by multiple threads~\cite{Srinivasan:08:Kilim} or a combination of both approaches~\cite{Haller:07:ScalaActors}.
+Erlang code is executed by a specialized runtime. However other actor implementations (i.e. SALSA~\cite{Varela:SALSA}, Scala's Actor library~\cite{Haller:07:ScalaActors}, Kilim~\cite{Srinivasan:08:Kilim}) target a general purpose virtual machine such as the Java Virtual Machine (JVM). These implementations use the type system or code modification techniques to verify that the actors conform to certain rules (i.e. no access to shared memory) and to integrate the actors with a runtime library. The runtime library provides execution environment for the actors and maps the actors to threads using the 1--to--1 model~\cite{Varela:SALSA}, M--to--N model~\cite{Srinivasan:08:Kilim,armstrong96erlang} or a combination of both approaches~\cite{Haller:07:ScalaActors}.
 
 \subsection{Self-Tuning}
 
-Another challenge facing Internet services is the complexity of tuning the systems. Administrators are expected to translate high--level objectives into low level resource limits and allocations (i.e. the number of worker threads servicing requests). Static limits and allocations rarely ensure the resources are efficiently utilized due to the complex, dynamic relationship between request loads, request distributions and resource availability. Self--tuning systems have been proposed as a solution to this problem~\cite{IBM01Autonomic}. In self--tuning systems, feedback loops observe the performance characteristics of a subsystem and adjust the tuning parameters to keep the subsystem operating within the ideal operating range~\cite{welsh03Adaptive}.
+Another challenge facing Internet services is the complexity of tuning the systems. Administrators are expected to translate high--level objectives into low level resource limits and allocations (i.e. the number of worker threads servicing requests). Static limits and allocations rarely ensure the resources are efficiently utilized due to the complex, dynamic relationship between request loads, request distributions and resource availability. 
+
+Self--tuning systems have been proposed as a solution to this problem~\cite{Kephart03AutonomicVision}. In self--tuning systems, feedback loops observe the performance characteristics of a subsystem and adjust the tuning parameters to keep the subsystem operating within the ideal operating range~\cite{welsh03Adaptive,Heiss:91:AdaptiveLoadControl}.
 
 \section{Whirlwind}
 
 Whirlwind is a software architecture based on the actor model of concurrency and implemented on the JVM. The service logic is defined by a collection of isolated, sequential processes that communicate through asynchronous message passing. If a process fails, the fault is contained within the process and a message is propagated to monitoring processes that may attempt to recover from the error.
 
-Processes with similar resource, computational and concurrency requirements are organized into a group. Processes within a group share a message predicate, an executor pool and a scheduler. Message predicates make it possible to selectively reject a message posted to a process in the group, a form of per--group admission control. Executors are responsible for executing the message handling code for each process. The scheduler determines the order in which processes are passed to the executors to handle pending messages.
+Processes with similar resource, computational and concurrency requirements are organized into a group. Processes within a group share a message predicate, a worker thread pool and a scheduler. Message predicates make it possible to selectively reject a message posted to a process in the group. Message predicates are a form of per--group admission control. The worker threads are responsible for executing the message handling code for each process. The scheduler determines the order in which processes are passed to the worker threads to handle pending messages.
 
-A principal is shared between one or more processes. The principal is the entity used by the scheduler and message predicates to classify and prioritize a process. Typically the processes that share a principal are in different groups and thus the principal enables consistent scheduling and admission control across groups.
+A principal is shared between one or more processes. The principal is the entity used by the scheduler and message predicates to classify and prioritize a process. Typically the processes that share a principal are in different groups and the principal enables consistent scheduling and admission control across groups.
 
 %The resource management policies are typically driven by feedback loops that monitor resource availability and system performance and adjust tuning parameters to meet performance goals
 
@@ -137,17 +132,17 @@ A \emph{non--system} process that receives a \emph{non--normal} termination mess
 
 Most Internet services support many concurrent requests and many of these requests perform similar computations. Identifying requests that are at a similar stage of processing and executing a ``cohort'' of them sequentially increases code and data reuse. This in turn increases performance by reducing cache misses~\cite{Larus:2002:Cohort,welsh03Adaptive}. Groups are designed to identify processes that have a high degree of code and data locality. Thus the set of processes in a group form an ideal cohort.
 
-Groups contain a pool of executors (a.k.a. threads). Each executor continuously loops, asking the scheduler for a process that is in the ready state (i.e. the process has messages in it's inbox), locking the process and invoking the message handling code for that process. A cohort is the set of processes that is executed by a single executor before the operating system initiates a context switch.
+Groups contain a pool of worker threads. Each thread continuously loops, asking the scheduler for a process that is in the ready state (i.e. the process has messages in it's inbox), locking the process and invoking the message handling code for that process. A cohort is the set of processes that is executed by a single worker thread before the operating system initiates a context switch.
 
 Cohort scheduling has limited effectiveness when the processes perform blocking operations, as the size of the cohort is limited by the number of non--blocking operations that can occur in succession. When it is impossible or impractical to avoid blocking operations, the processes that perform these operations should be placed in a separate group.
 
-Using a pool of executors for each group has the advantage that it allows the work for a single group to be distributed over multiple hardware processors. Secondly, if the processes ever perform any blocking operations then it will not block all processes within the group. 
+Using a pool of worker threads for each group has the advantage that it allows the work for a single group to be distributed over multiple hardware processors. Secondly, if the processes ever perform any blocking operations then it will not block all processes within the group. 
 
 \subsection{Principals}
 
 A principal represents the application entity that is considered a single unit of work (or \emph{transaction}) from the point of view of an external system. Typically the principal is also the unit of load used to measure system performance. An Internet service may represent each ``request'', ``connection'' or ``session'' entity as a single principal.
 
-The principal is associated with all the processes that are responsible for servicing the entity. Often these processes form a single message path. i.e. a HTTP server that uses a ``connection'' principal may associate the principal with the \verb+SocketProcess+, \verb+HttpProcess+ and \verb+PageProcess+.
+The principal is associated with all the processes that are responsible for servicing the entity. Often these processes form a single message path. i.e. a HTTP server that uses a ``connection'' principal may associate the principal with the \verb+SocketConnection+, \verb+HttpConnection+ and \verb+PageGenerator+ processes.
 
 The principal is the category that is prioritized during scheduling and load shedding. So all the processes that are servicing a single principal can be consistently prioritized. This avoids the scenario where a high priority process is penalized due to a low priority predecessor or successor process.
 
@@ -165,49 +160,86 @@ Included with Whirlwind is a library of message predicates that the application 
 
 \subsection{Schedulers}
 
-Every group defines a scheduler that determines the order in which processes are passed to executors. A process is scheduled when a message is posted to it. The scheduler algorithm can take into account characteristics of the message as well as the principal of the destination process during the scheduling decision.
+Every group defines a scheduler that determines the order in which processes are passed to the worker threads. A process is scheduled when a message is posted to it. The scheduler algorithm can take into account characteristics of the message as well as the principal of the destination process during the scheduling decision.
 
-The default scheduler uses a FIFO algorithm but there are several other schedulers included within the Whirlwind. i.e. A stride scheduler~\cite{Stride:Waldspurger:95} allocates processing proportionally to different request classes. The ability to define custom schedulers has made it possible to replicate past work such as request aware scheduling~\cite{Zhou06RequestAware} and resource aware scheduling~\cite{Behren03Capriccio}.
+The default scheduler uses a FIFO algorithm but there are several other schedulers included within the Whirlwind. A priority 
+
+A stride scheduler~\cite{Stride:Waldspurger:95} allocates processing proportionally to different request classes. The ability to define custom schedulers has made it possible to replicate past work such as request aware scheduling~\cite{Zhou06RequestAware} and resource aware scheduling~\cite{Behren03Capriccio}.
 
 \subsection{Adaptive Concurrency Level}
 
-The execution of message handling code is driven by a pool of executors. The size of the pool or concurrency level has a significant impact on the performance of the system. Often the number of executors is limited by scalability concerns or limits of the underlying operating system. Too many executors across the system and throughput will degrade. Too few executors can result in under utilisation of hardware resources. Too few executors can also result in progress stalling if all executors are performing long or blocking operations. The ideal number of executors will vary depending on the current request load, the request distribution and the resources available to the group.
+The execution of message handling code is driven by a pool of worker threads. The size of the thread pool or the concurrency level has a significant impact on the performance of the system. Too many threads results in thrashing and a decrease in throughput. Too few threads and hardware resources are under utilized, particularly if many threads are blocking or performing long running operations. Not to mention that the underlying operating system typically has hard limits on the number of threads. The ideal concurrency level will vary depending on the current request load, the request distribution and the resources available to the group.
 
-Whirlwind uses adaptive algorithms to adjust the groups concurrency level to maximize throughput. Similar approaches have been proposed for for database systems~\cite{Heiss:91:AdaptiveLoadControl} and other Internet service architectures~\cite{welsh03Adaptive} but as far as we know has never been applied to actor based systems. This is most likely due to the fact that most actor based systems do not allow a blocked actor to consume a processor.
+Whirlwind uses adaptive algorithms to adjust the groups concurrency level to maximize throughput. Similar approaches have been proposed for for database systems~\cite{Heiss:91:AdaptiveLoadControl} and other Internet service architectures~\cite{welsh03Adaptive} but as far as we know has never been applied to actor based systems. This is most likely due to the fact that most scalable actor based systems do not allow a blocked actor to consume a thread.
 
-Whirlwind allows the application developer to provide their own algorithm for adapting the concurrency level of a group or they use one of the supplied algorithms. The pseudo code for the default algorithm is presented in Figure~\ref{figure:epc}. Typically the algorithm periodically observes performance characteristics of the group and adjusts the pool size with the aim of meeting throughput and response time goals. 
+Whirlwind provides several controller implementations that dynamically adjust the concurrency level of a group. Periodically the controller observes performance characteristics and adjusts the pool size in an attempt to meet throughput and response time goals. The developer can also specify a custom controller or use one of the predefined controllers. The pseudo code for the default algorithm is presented in Figure~\ref{figure:epc}. 
 
 \begin{figure}[ht]
 \begin{verbatim}
 if idleTime > idleTimeThreshold
-  if executorCount > minExecutorCount
-    executorCount--
-else if executorCount < maxExecutorCount
+  if threadCount > minThreadCount
+    threadCount--
+else if threadCount < maxThreadCount
   if queueLatency > queueLatencyThreshold
     if lockLatency < lockLatencyThreshold
-      executorCount++
+      threadCount++
 \end{verbatim}
-\caption{Pseudocode for default algorithm for adjusting concurrency level of a group. \emph{idleTime} is the average time an executor waits for the scheduler to supply a process. \emph{queueLatency} is the average time a message spends in the queue. \emph{lockLatency} is the average time spent acquiring a process lock prior to message handling.}
+\caption{Pseudocode for default algorithm for adjusting concurrency level of a group. \emph{idleTime} is the average time a thread waits for the scheduler to supply a process. \emph{queueLatency} is the average time a message spends in the queue. \emph{lockLatency} is the average time spent acquiring a process lock prior to message handling.}
 \label{figure:epc}
 \end{figure} 
 
 \subsection{Libraries}
 
-Included with Whirlwind is a library that includes implementations of runtime components such as schedulers, message predicates, resource controllers and principles. The library also includes reusable slices of applications providing; access to file systems, access to sockets, TLS/SSL translation, HTTP connection management, schedulers, an xml format for assembling and configuring applications etc. There is also a testing and benchmark framework with a database backed, web UI for recording and measuring performance of Whirlwind--based systems.
+Included with Whirlwind is a library that includes implementations of runtime components such as schedulers, message predicates, resource controllers and principles. The library also includes reusable slices of applications providing; access to file systems, access to sockets, TLS/SSL translation, HTTP connection management, schedulers, a declarative xml format for assembling and configuring applications etc. There is also a testing and benchmarking framework with a database--backed, web UI for recording and measuring performance of Whirlwind based systems.
 
-The most interesting library included within Whirlwind is the supervisor library. The supervisor library is based loosely around the Erlang implementation of supervisors~\cite{Armstrong03Thesis}. The library includes a system process that will monitor child processes and attempt error recovery if the child processes fail. Several error recovery strategies are provided. As in Erlang, the supervisor processes are typically organized into a tree such that all but the root supervisor processes is monitored by another supervisor. If a supervisor fails to recover from a child failure then it can in turn fail and force the parent supervisor process to attempt error recovery. For the system to fail, all supervisors in the tree must fail to recover from the error. 
+The most interesting library included within Whirlwind is the supervisor library. The supervisor library is based loosely around the Erlang implementation of supervisors~\cite{Armstrong03Thesis}. The library includes a system process that will monitor child processes and attempt error recovery if the child processes fail. Several error recovery strategies are provided. 
+
+As in Erlang, the supervisor processes are typically organized into a tree such that all but the root supervisor processes is monitored by another supervisor. If a supervisor fails to recover from a child failure then it can in turn fail and force the parent supervisor process to attempt error recovery. For the system to fail, all supervisors in the tree must fail to recover from the error. 
 
 \section{Whirlwind in Practice}
 
-TODO: This section needs to be filled out based on the old WW article.
+The best way to get a feel for the architecture is to look at the design for a Whirlwind application. This section describes the design of the HTTP server component used in IRIS. Figure~\ref{figure:http-server} presents a basic design of subsystem responsible for processing HTTP connections.
 
-\begin{enumerate}
-	\item Describe an example of HTTP application
-	\item Describe implementing service degradation when load increases
-	\item Describe implementing admission control as load increases still
-	\item Describe using principal (session based) to classify which requests get selected
-	\item Describe using different user categories for prioritization (i.e. unauthenticated, authenticated, admin user)
-\end{enumerate}
+\begin{figure*}[htbp]
+\centering
+\includegraphics[width=\textwidth]{http-server.eps}
+\caption{The subsystem responsible for processing HTTP connections. All of the groups contain processes of a single type except for the ``Resource Handler'' group. This group contains processes of type ``List'' for presenting a list of resources and ``Show'' for presenting detailed information about a single resource.}
+\label{figure:http-server}
+\end{figure*} 
+
+Each connection to the HTTP server resulted in the creation of three processes;
+
+\begin{itemize}
+	\item a \verb+SocketConnection+ process to manage the underlying socket,
+	\item a \verb+HttpConnection+ process to decode and encode HTTP messages and manage the HTTP connection state, and
+	\item a \verb+Dispatcher+ that routes the HTTP requests to specific handlers based on the contents of the headers, method and uri of the request.
+\end{itemize}
+
+Each request submitted to the server results in the \verb+Dispatcher+ creating a \emph{handler} process. A handler may be responsible for delivering content from the filesystem, dynamically generating content based based on values retrieved from a database or submitting data to an external system. 
+
+The handler will usually generate one or more processes while handling the request. For example, the \verb+FileHandler+ process creates an \verb+AsyncFile+ process while the \verb+ListDeployedResources+ process creates a \verb+DbConnection+ process. 
+
+Some handlers will share a group if they utilize similar resources and load shedding is likely to handle these handlers similarly. However, most handlers and other other processes in the system will have a single group per process type.
+
+Most Whirlwind applications will only place messages predicates in a few specific locations. The HTTP server defines a message predicate on the \verb+Dispatcher+ group and on each of the handler groups. 
+
+If a message predicate attached to a handler group rejects a message then the dispatcher may attempt to send a less resource intensive request to the handler. Figure~\ref{figure:message-predicate} presents a scenario where the \verb+FileHandler+ group rejects a request for a high resolution image and a medium resolution image before accepting a request for a low resolution image. 
+
+\begin{figure}[htbp]
+\centering
+TODO
+%\includegraphics[width=\linewidth]{http-server.eps}
+\caption{TODO}
+\label{figure:message-predicate}
+\end{figure}
+
+If the message predicate attached to the \verb+Dispatcher+ group rejects a message then the \verb+HttpConnection+ sending the message will return a ``503 Service Unavailable'' response to the client and close the connection. This message predicate is only triggered when the message predicates attached to the handlers have failed to shed enough load to avoid system overload.
+
+The HTTP server defines a single principal for each HTTP session. When a client accesses a page it is typical that several requests occur over one or more HTTP connections. The requests typically load the HTML page and supporting resources such as images. A message predicate that decides to reject messages should either reject all requests from a session or none at all, as partial loading of a page results in a poor user experience~\cite{Cherkasova:2002yb}. 
+
+The creation of a new handler for every request rather than handler reuse is deliberate. This design results in all the processes in Figure~\ref{figure:http-server} being  associated with a single principal thus allowing consistent treatment by message predicates across the whole system.
+
+The prioritization of principals takes into account whether the session is for an authenticated user and if the user is in the \emph{admin} role. Administrators are given the highest priority as they need to be able to view the status of the system at anytime, even if the system is overloaded while unauthenticated users are given the lowest priority.
 
 \section{Evolution of the Framework}
 
@@ -255,7 +287,7 @@ The demands of deploying the code into a production environment where both failu
 
 Whirlwind is an implementation of the actor model of concurrency based on the JVM that includes load management and fault management primitives. While it incorporates aspects of existing work it is most strongly related to the work on SEDA, Erlang and Kilim. 
 
-Whirlwind incorporates load protection primitives from SEDA, namely cohort scheduling and message predicates. Whirlwind also includes fault management primitives and a supervisor library that was inspired by Erlang. Whirlwind, SEDA and Kilim are all JVM based while Erlang uses a specialized virtual machine.
+Whirlwind incorporates load protection primitives from SEDA, namely cohort scheduling and message predicates. Whirlwind also includes fault management primitives and a supervisor library inspired by similar elements in Erlang. Whirlwind, SEDA and Kilim are all JVM based while Erlang uses a specialized virtual machine.
 
 Whirlwind eschews the shared memory model of SEDA and assumes processes are isolated and share no state. Unlike Kilim and Erlang, ensuring the isolation of processes is partially the responsibility of the developer. A developer can inadvertently or deliberately share state between processes but in such a scenario, Whirlwind assumes that the developer knows what they are doing. 
 
